@@ -1,3 +1,2 @@
 streamlit
-serial
-serial.tools
+pyserial
