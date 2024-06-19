@@ -1,36 +1,28 @@
 import streamlit as st
-import serial
-from serial.tools import list_ports
+import asyncio
+import websockets
 
-def list_serial_ports():
-    ports = [port.device for port in list_ports.comports()]
-    st.write("Available ports:", ports)  # デバッグメッセージ追加
-    return ports
+async def get_ports():
+    uri = "ws://localhost:8765"
+    async with websockets.connect(uri) as websocket:
+        await websocket.send("list_ports")
+        ports = await websocket.recv()
+        return ports
 
-ports = list_serial_ports()
-port_name = st.selectbox("Select PORT", ports)  # シリアルポート選択メニュー表示
+async def connect_to_port(port_name):
+    uri = "ws://localhost:8765"
+    async with websockets.connect(uri) as websocket:
+        await websocket.send(f"connect:{port_name}")
+        response = await websocket.recv()
+        st.write(response)
 
-if st.button('Connect'):  # シリアルポートに接続
-    if not port_name:
-        st.error("No port selected. Please select a port.")
-    else:
-        try:
-            serialPort = serial.Serial(port=port_name, baudrate=9600, bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE)
-            st.success(f"Connected to {port_name}")
+st.title("Serial Port Selector")
 
-            # シリアルデータ送信
-            serialPort.write(b'hello') 
+if st.button("Get Ports"):
+    ports = asyncio.run(get_ports())
+    st.write(ports)
 
-            # シリアルデータ受信（例）
-            if serialPort.in_waiting > 0:
-                serialData = serialPort.readline()
-                st.write(serialData.decode('Ascii'))
+port_name = st.text_input("Enter port name")
 
-            # シリアルポートを閉じる
-            serialPort.close()
-        except serial.SerialException as e:
-            st.error(f"SerialException: {e}")
-        except PermissionError as e:
-            st.error(f"PermissionError: {e.strerror}. You might need to run this application with higher privileges.")
-        except Exception as e:
-            st.error(f"Unexpected error: {e}")
+if st.button("Connect"):
+    asyncio.run(connect_to_port(port_name))
