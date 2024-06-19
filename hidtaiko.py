@@ -1,28 +1,42 @@
 import streamlit as st
-import asyncio
-import websockets
+import serial
+import time
 
-async def get_ports():
-    uri = "ws://localhost:8765"
-    async with websockets.connect(uri) as websocket:
-        await websocket.send("list_ports")
-        ports = await websocket.recv()
-        return ports
+# Arduinoのシリアルポートを指定します
+SERIAL_PORT = 'COM3'  # 実際のポートに置き換えてください
+BAUD_RATE = 9600
 
-async def connect_to_port(port_name):
-    uri = "ws://localhost:8765"
-    async with websockets.connect(uri) as websocket:
-        await websocket.send(f"connect:{port_name}")
-        response = await websocket.recv()
-        st.write(response)
+@st.cache_resource
+def get_serial_connection():
+    return serial.Serial(SERIAL_PORT, BAUD_RATE)
 
-st.title("Serial Port Selector")
+def read_from_arduino(serial_connection):
+    if serial_connection.in_waiting > 0:
+        return serial_connection.readline().decode('utf-8').strip()
+    return None
 
-if st.button("Get Ports"):
-    ports = asyncio.run(get_ports())
-    st.write(ports)
+st.title('Arduino Serial Communication')
 
-port_name = st.text_input("Enter port name")
+# シリアル接続を取得
+ser = get_serial_connection()
 
-if st.button("Connect"):
-    asyncio.run(connect_to_port(port_name))
+# Arduinoに送信するメッセージを入力
+message = st.text_input('Message to Arduino', '')
+
+if st.button('Send'):
+    if message:
+        ser.write(message.encode('utf-8'))
+        st.write('Message sent to Arduino:', message)
+
+# Arduinoからのメッセージを表示
+st.write('Message from Arduino:')
+output = read_from_arduino(ser)
+if output:
+    st.write(output)
+else:
+    st.write('No new messages.')
+
+# シリアル接続を閉じる
+if st.button('Close Connection'):
+    ser.close()
+    st.write('Serial connection closed.')
