@@ -3,23 +3,25 @@ import serial
 from serial.tools import list_ports
 
 def list_serial_ports():
-    return [port.device for port in list_ports.comports()] #シリアルポートのリスト取得
+    ports = [port.device for port in list_ports.comports()]
+    st.write("Available ports:", ports)  # デバッグメッセージ追加
+    return ports
 
-port_name = st.selectbox("Select PORT", list_serial_ports()) #シリアルポート選択メニュー表示
+ports = list_serial_ports()
+port_name = st.selectbox("Select PORT", ports)  # シリアルポート選択メニュー表示
 
-if st.button('Connect'):# シリアルポートに接続
+if st.button('Connect'):  # シリアルポートに接続
     if not port_name:
-        st.error("No port selected. Please select a port.") #
+        st.error("No port selected. Please select a port.")
     else:
         try:
-            
             serialPort = serial.Serial(port=port_name, baudrate=9600, bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE)
             st.success(f"Connected to {port_name}")
 
             # シリアルデータ送信
             serialPort.write(b'hello') 
 
-            # しりあるデータ受信（例）
+            # シリアルデータ受信（例）
             if serialPort.in_waiting > 0:
                 serialData = serialPort.readline()
                 st.write(serialData.decode('Ascii'))
@@ -32,4 +34,3 @@ if st.button('Connect'):# シリアルポートに接続
             st.error(f"PermissionError: {e.strerror}. You might need to run this application with higher privileges.")
         except Exception as e:
             st.error(f"Unexpected error: {e}")
-
